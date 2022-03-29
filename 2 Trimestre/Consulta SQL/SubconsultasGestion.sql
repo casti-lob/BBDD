@@ -18,7 +18,7 @@ WHERE c.CODCLI in
 
 SELECT COUNT(c.CODCLI) 
 FROM CLIENTES c 
-WHERE c.CODCLI  = all
+WHERE c.CODCLI  in
 				(
 				SELECT f.CODCLI 
 				FROM FACTURAS f 
@@ -29,14 +29,15 @@ WHERE c.CODCLI  = all
  * 3 Número de clientes que en todas sus facturas tienen un 
  * 16% de IVA (los clientes deben tener al menos una factura).
  */
-SELECT COUNT(c.CODCLI) 
-FROM CLIENTES c 
-WHERE c.CODCLI = all
+SELECT COUNT(f.CODFAC) 
+FROM FACTURAS f
+WHERE f.IVA  =ALL 
 				( 
-				SELECT f.CODCLI 
+				SELECT f.IVA  
 				FROM FACTURAS f 
 				WHERE f.IVA =16
 				);
+
 
 /*
  * 4 Fecha de la factura con mayor importe (sin tener en 
@@ -57,15 +58,20 @@ SELECT COUNT(p.CODPUE)
 FROM PUEBLOS p 
 WHERE p.CODPUE NOT IN
 					(
-					SELECT c.CODPUE 
+					SELECT DISTINCT c.CODPUE 
 					FROM CLIENTES c 
 					);
+				
+SELECT COUNT(p.CODPUE)  
+FROM PUEBLOS p ,CLIENTES c 
+WHERE p.CODPUE = c.CODPUE (+)
+AND c.CODPUE IS NULL ;
 /*
  * 6 Número de artículos cuyo stock supera las 20 unidades, 
  * con precio superior a 15 euros y de los que no hay ninguna 
  * factura en el último trimestre del año pasado.
  */
-SELECT COUNT(a.CODART) 
+SELECT  COUNT(a.CODART) 
 FROM ARTICULOS a ,LINEAS_FAC lf 
 WHERE a.CODART = lf.CODART 
 AND a.PRECIO >15
@@ -75,8 +81,8 @@ AND lf.CODFAC NOT IN
 					SELECT f.CODFAC 
 					FROM FACTURAS f 
 					WHERE EXTRACT(YEAR FROM f.FECHA)= EXTRACT(YEAR FROM sysdate)-1
-					AND EXTRACT(MONTH FROM f.FECHA)>6
-					AND EXTRACT(MONTH FROM f.FECHA)<10
+					AND EXTRACT(MONTH FROM f.FECHA)>9
+					AND EXTRACT(MONTH FROM f.FECHA)<=12
 					);
 /*
  * 7 Obtener el número de clientes que en todas las facturas del 
@@ -90,6 +96,7 @@ WHERE c.CODCLI in
 				SELECT f.CODCLI 
 				FROM FACTURAS f 
 				WHERE nvl(f.IVA,0) =0
+				AND EXTRACT(YEAR FROM f.FECHA)= EXTRACT(YEAR FROM sysdate) -1
 				);
 
 /*
@@ -106,7 +113,7 @@ WHERE c.CODCLI =
 				(
 				SELECT f.CODCLI 
 				FROM FACTURAS f 
-				WHERE EXTRACT (MONTH FROM f.FECHA)<11
+				WHERE EXTRACT (MONTH FROM f.FECHA)=11
 				AND EXTRACT(YEAR FROM f.FECHA)= EXTRACT(YEAR FROM sysdate)-1
 				AND f.CODFAC in
 								(SELECT lf.CODFAC 
@@ -123,22 +130,22 @@ AND  c.CODCLI =	(
 								FROM LINEAS_FAC lf
 								)
 				);
+
 /*
  * 9 Código, descripción y precio de los diez artículos más caros.
  */
-SELECT a.CODART , a.DESCRIP , a.PRECIO 
-FROM ARTICULOS a 
-WHERE a.PRECIO = all
-				(
-				SELECT MAX(a.PRECIO) 
-				FROM ARTICULOS a
+SELECT CODART, DESCRIP, PRECIO
+FROM (SELECT a.CODART, a.DESCRIP, a.PRECIO, SUM(a.precio)
+		FROM ARTICULOS a
+		GROUP BY a.CODART, a.DESCRIP, a.PRECIO
+		ORDER BY SUM(a.PRECIO) DESC
+		)
+WHERE rownum<=10;
 
-				)
-AND rownum<=10;
 
 /*
  * 10 Nombre de la provincia con mayor número de clientes.
- * Mal
+ * 
  */
 SELECT p.NOMBRE 
 FROM PROVINCIAS p,PUEBLOS p2, CLIENTES c 
@@ -163,7 +170,7 @@ FROM ARTICULOS a , LINEAS_FAC lf
 WHERE a.CODART = lf.CODART 
 AND a.PRECIO >90.15
 AND a.CODART IN(
-                SELECT lf.CODART
+                SELECT DISTINCT lf.CODART
                 FROM FACTURAS f , LINEAS_FAC lf 
                 WHERE lf.CODFAC = f.CODFAC
                 AND EXTRACT(YEAR FROM f.FECHA)= EXTRACT(YEAR FROM SYSDATE)-1
@@ -180,20 +187,23 @@ SELECT DISTINCT  a.CODART , a.DESCRIP
 FROM ARTICULOS a 
 WHERE a.PRECIO >
 				(
-				SELECT MIN(a.PRECIO)*3 
+				SELECT MIN(a.PRECIO)*3000 
 				FROM ARTICULOS a
 				);
 /*
  * 13 Nombre del cliente con mayor facturación.
  */
-SELECT DISTINCT  c.NOMBRE 
+SELECT   c.NOMBRE 
 FROM CLIENTES c , FACTURAS f, LINEAS_FAC lf 
 WHERE c.CODCLI =f.CODCLI 
 AND f.CODFAC = lf.CODFAC 
-AND lf.PRECIO =
+GROUP BY c.NOMBRE 
+HAVING sum(lf.PRECIO)=
 				(
-				SELECT MAX(lf.PRECIO)
-				FROM LINEAS_FAC lf2 
+				SELECT MAX(sum(lf.PRECIO))
+				FROM LINEAS_FAC lf , FACTURAS f 
+				WHERE lf.CODFAC = f.CODFAC 
+				GROUP BY f.CODCLI 
 				);
 /*
  * 14 Código y descripción de aquellos artículos con un precio 
