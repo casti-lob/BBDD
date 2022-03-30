@@ -19,10 +19,14 @@ WHERE a.NACIMIENTO  < to_date('01-01-1070','DD-MM-YYYY');
  * mismo peso por la talla (primero los 
  * más grandes).
  */
-SELECT DISTINCT c.PESO ,c.TALLA ,c.PEZ 
-FROM CAPTURASEVENTOS c 
-WHERE c.TALLA <= 45
-ORDER BY c.PEZ , c.PESO desc, c.TALLA DESC;
+SELECT DISTINCT PESO ,TALLA ,PEZ 
+FROM CAPTURASEVENTOS 
+WHERE TALLA <= 45
+UNION 
+SELECT DISTINCT PESO ,TALLA ,PEZ 
+FROM CAPTURASEVENTOS 
+WHERE TALLA <= 45
+ORDER BY PEZ , PESO desc, TALLA DESC;
 
 /*
  * 3 Obtener los nombres y apellidos de los afiliados que o bien 
@@ -35,8 +39,7 @@ SELECT DISTINCT  a.NOMBRE , a.APELLIDOS
 FROM AFILIADOS a , PERMISOS p 
 WHERE a.FICHA = p.FICHA 
 AND UPPER(p.LICENCIA) LIKE 'A%'
-OR (a.TELF  like'9%' AND a.DIRECCION LIKE 'Avda.%'
-);
+OR (a.TELF  like'9%' AND a.DIRECCION LIKE 'Avda.%');
 
 /*
  * 4 Lugares del cauce “Rio Genil” que en el campo de 
